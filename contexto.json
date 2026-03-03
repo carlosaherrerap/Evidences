@@ -1,0 +1,164 @@
+Contexto:
+Perteneces a un área de cobranzas, donde tu labor consiste en atender a clientes que tienen deudas con ciertas entidades financieras como:financiera Qapaq, caja piura, caja Huancayo, caja Tacna, etc.
+
+Dichos clientes pueden tomar decisiones como: no pagar, promesa de pago, adelanto de pago, pago por cuotas,  etc.
+
+Y para cada circunstancia se le debe realizar una gestión tratando de contactar al cliente, si ya pagó se le llama confirmando que el cliente ya haya cancelado. Si hizo una promesa de pago entonces se le manda una llamada preguntando si pagó en la fecha, si no pagó entonces se le busca al cliente por diferentes gestiones de llamada o SMS tratando de hacer contacto y de una respuesta.
+
+Así pues, existen 3 tipos de gestión:
+IVR:Se envía un audio pregrabado sugiriendo al cliente presionar una tecla para comunicarse con el asesor.
+SMS:Mensaje SMS enviado por app de SMS nativo.
+CALL(o GRABACION CALL):Llamada en tiempo real de un asesor de una entidad financiera al cliente deudor de esa entidad.
+
+
+Al final, se puede obtener 1 de 2 resultados:
+1.-Gestión Efectiva, es aquella donde definitivamente se logro contactar al cliente.
+2.-Gestion no efectiva, es aquella que por más que se envió un IVR,SMS o llamada(CALL o GRABACION CALL) no se logró contactar al deudor.
+
+
+Al final de la jornada, se crea un reporte para un total de clientes en un Excel, es decir, se crea una fuente de datos con clientes que se les envió IVR, SMS  y CALL(en algunos casos)
+
+Así pues, cada cliente que se le hizo una gestión debería estar en esa fuente de datos en excel
+y junto a otro archivo nuevo de datos en Excel se verifica si al cliente se le hizo una gestión efectiva. Los archivos son 2:
+1.-datos_fuente.xlsx, con campos:CUENTA,	DNI,	NOMBRE,	TELEFONO,	TIPO DE GESTION,	GESTION EFECTIVA
+*Se muestra cada uno de los clientes con valores para cada campo. Es decir, cada cliente tiene una cuenta, dni,nombre,telefono, un tipo de gestión que se realizó y la gestión efectiva confirmada que se hizo.
+
+por ejemplo:
+107069101002288680|	10054633|	GABANCHO CACERES, BANZER|	966001299|	IVR|	IVR,SMS
+
+
+2.-nuevos_datos.xlsx, con campos como: CUENTA |	EMPRESA_RECAUDADORA_EXTERNA|	TIPO_CARTERA|	AGENCIA	contacto|	SALDO_CAPITAL|	FECHA_GESTION|	ATRASO	|TIPO_GESTION|	GESTION_EFECTIVA|	TELEFONO|	DATA|	REFERENCIA|	RESULTADO|	OBSERVACIONES	|FECHA_COMPROMISO|	MONTO_COMPROMISO|	CLASIFICACION_DEL_CREDITO|	UBICABLE_TELEFONICAMENTE|	REPROGRAMARA|	TELEFONO_REPROGRAMARA|
+
+Donde el campo más importante es:GESTION_EFECTIVA
+ya que suponiendo se llegue a tener un cliente en datos_fuente.xlsx que su campo GESTION EFECTIVA, tenga el valor de GRABACION CALL y el valor del campo GESTION EFECTIVA de nuevos_datos.xlsx para ese mismo cliente solo tenga IVR. Entonces quiere decir que a ese cliente realmente no se le hizo una gestión CALL...
+
+-Lo que si es cierto es que todos los clientes deben tener como gestión efectiva:IVR y SMS
+
+
+
+
+Objetivo:
+Teniendo el contexto claro, debes saber que se envían reportes de que realmente se le hizo una gestión efectiva a un cliente. Es decir, pruebas contundentes de que se le hizo una llamada, se envió un SMS y se mandó un IVR. Siempre y cuando ese cliente esté dentro de la base datos_fuente.xlsx y su gestión efectiva coincida con el valor de gestión efectiva en nuevos_datos.xlsx
+
+El reporte consiste en crear archivos de evidencias de cada gestión por cliente, si al cliente se le hizo un envío de IVR, se debe crear 2 archivos(excel+audio mp3) para la carpeta de ese cliente adjuntando esos 2 archivos que prueban que se le mandó un IVR al cliente.
+Si al cliente se le envió un SMS, se debe crear 1 único archivo Excel mostrando información de que se le envió un SMS a dicho cliente.
+Ahora bien, si al cliente se le hizo una llamada, se le debe crear 2 archivos(excel+audio) que prueben que se les llamó realmente.
+
+
+***Antes de empezar a crear los archivos con Python, es preferible sanitizar los campos. Algunos campos pueden aparecer con minúsculas o de otra forma como:
+-"cuenta" que es lo mismo que "CUENTA"
+-"nombre" es igual a "NOMBRE" o "nombres" o "NOMBRES" o "contacto" o "CONTACTO" o "nombre completo" o "nombre_completo"
+-"dni" es igual a "documento" o "DNI" o "DOCUMENTO"
+-"gestión efectiva" o "GESTION EFECTIVA" o "gestion_efectiva"
+-"telefono" o "TELEFONO" o "celular" o "CELULAR"
+
+***Recuerda quitar los espacios en blanco delante y detrás de cada campo o valor
+
+-------------------------------------------------
+
+
+Crea una intefaz en Python, la que de mejor resultado estético y vistoso profesional, que me permita crear los archivos para cada gestión.
+
+-Para la gestión de IVR, se le crea:
+->archivo Excel IVR: toma el numero de CUENTA del cliente dentro de datos_fuente.xlsx y lo filtras dentro de nuevos_datos.xlsx por el campo:CUENTA
+y filtras en el campo:GESTION_EFECTIVA cuando el valor es:IVR. Luego crea un nuevo campo al final:TIPO DE GESTION y coloca el valor:IVR
+->audio mp3: La interfaz debe permitirme seleccionar un audio(ese mismo es para todos los clientes que tienen gestión IVR)
+
+-Para la gestión de SMS, se le crea:
+->archivo de Excel SMS:toma el numero de CUENTA del cliente dentro de datos_fuente.xlsx y lo filtras dentro de sms.xlsx por el campo:NUMERO DE CREDITO
+
+
+-Para la gestión CALL o GRABACION CALL:
+->archivo de Excel:toma el numero de CUENTA del cliente dentro de datos_fuente.xlsx y lo filtras dentro de nuevos_datos.xlsx por el campo:CUENTA
+y filtras en el campo:GESTION_EFECTIVA cuando el valor es:CALL. Luego crea un nuevo campo al final:TIPO DE GESTION y coloca el valor:CALL
+
+->audio:La interfaz debe permitirme seleccionar un archivo:consolidados.xlsx que contiene los campos:
+año	|mes	|dia|	codigo1	|tipo|	cartera	|codigo2|	telefono|	dni	|longText|	ruta|	nombre_completo|
+
+Cada cliente en datos_fuente.xlsx tiene una CUENTA,TELEFONO y un DNI(o DOCUMENTO), se debe filtrar el valor del DNI del cliente dentro del campo:dni en consolidados.xlsx y si no hay resultados se debe usar el TELEFONO del cliente para filtrar en el campo:telefono
+Una vez obtenido el resultado de filtrar el DNI(o telefono) del cliente entonces crea una variable de ruta completa apartir de los valores de los campos:ruta y el campo:nombre_completo.
+Por ejemplo, para un cliente con el dni:78301756
+
+2025	11	24	100306	pre	19	361	926660978	78301756	35	E:/ProcesoAudios/2025/11/24	20251124-100306-pre-19-361-926660978-78301756
+
+Su variable de ruta completa es(ruta+/+nombre_completo+.mp3):E:/ProcesoAudios/2025/11/24/20251124-100306-pre-19-361-926660978-78301756.mp3
+
+entonces acceder a esa ruta para tomar ese audio mp3.
+
+
+--------------------------------------------
+NOMBRES DE LOS ARCHIVOS Y CARPETAS.
+
+
+***El primer paso es crear cada carpeta para cliente con el formato: [NOMBRE]_[CUENTA]
+
+Por ejemplo: para el cliente->107167101001070124	41161732	ORNETA AQUINO, YENSE ELENA	959773780	IVR	IVR,SMS
+Su carpeta será:ORNETA AQUINO, YENSE ELENA_107167101001070124
+y dentro se adjuntará todos los archivos que le corresponde según su GESTION EFECTIVA
+
+***Para IVR, se crea 2 archivos(Excel + audio): El archivo Excel tiene el nombre con el formato:	[NOMBRE]_ivr.xlsx
+por ejemplo:ORNETA AQUINO, YENSE ELENA_ivr.xlsx
+Y para el audio de ivr:ivr_[NOMBRE].xlsx por ejemplo: ivr_ORNETA AQUINO, YENSE ELENA.mp3
+
+***Para SMS, solo es un archivo con el formato: SMS_[NOMBRE].xlsx
+por ejemplo:SMS_ORNETA AQUINO, YENSE ELENA.xlsx
+
+***Para CALL(o GRABACION CALL): Tiene 2 archivos, Excel + audio, el Excel tiene el formato:[NOMBRE]_gestiones.xlsx. por ejemplo: ORNETA AQUINO, YENSE ELENA_gestiones.xlsx
+Y el audio de call tiene el formato:[NOMBRE]_[CUENTA]
+por ejemplo:ORNETA AQUINO, YENSE ELENA_107167101001070124.mp3
+
+--------------------------------------------------------------------
+******NOTA:Totda gestión se crea solo si le pertenece al cliente dicha gestión. Si un cliente solo tiene gestiones:IVR,SMS entonces se le crea los 2  archivos de IVR y 1 de SMS como debe de ser, no tiene porque procesarse gestión CALL.
+Igual, si un cliente tiene gestión efectiva:IVR,SMS,CALL
+entonces se le crea los 5 archivos:2 de IVR, 2 de CALL y 1 de SMS
+**Las gestiones están separadas por coma(,)
+por ejemplo:
+GESTION EFECTIVA
+___________________
+
+IVR,SMS  <---aquí el cliente tiene 2 gestiones
+IVR,SMS
+IVR,SMS
+IVR,SMS
+GRABACION CALL,IVR,SMS <---aquí el cliente tiene 3 gestiones
+GRABACION CALL,IVR,SMS
+GRABACION CALL,IVR,SMS
+IVR,SMS <---aquí el cliente tiene 2 gestiones
+
+-------------------------------------------------------------------
+
+La interfaz debe estar seccionada por partes.
+TITULO:EVIDENCIAS
+
+DATOS BASE:
+->En esta sección nos permita seleccionar los 2 archivos->datos_fuente.xlsx y nuevos_datos.xlsx
+Cuando se seleccione datos_fuente.xlsx mostrar en un recuadro la cantidad de clientes y carpetas a crear.
+**Cada vez que se seleccione un archivo debe cambiar el botón de "seleccionar" y en el input mostrar el nombre del archivo seleccionado
+->Luego sección de cada GESTION 
+
+IVR:
+-----
+Seleccionar audio ivr
+
+SMS:
+----
+Seleccionar archivo sms.xlsx
+
+CALL:
+----
+Seleccionar Excel de consolidados.xlsx
+
+
+
+***El archivo de IVR y el archivo de CALL se crea filtrando en nuevos_datos.xlsx que en la primera sección ya se había seleccionado
+
+La última sección nos permite seleccionar la carpeta donde se van a crear todas las carpetas de los clientes con sus archivos según su gestión efectiva. y un input para crear el nombre de la carpeta que contendrá todas las subcarpetas de los clientes.
+
+Un botón de PROCESAR y una vista de terminal que me permita ver los logs:
+-->Archivo para IVR encontrado, audio para IVR encontrado, archivo para SMS encontrado, archivo para CALL encontrado.
+***Validar que dentro de esos archivos para IVR,SMS y CALL contengan los campos necesarios para filtrar al cliente(CUENTA,TELEFONO,numero_credito, etc.)
+->Cliente actual procesando
+->Cantidad de cliente avanzando de Cantidad total
+-->Gestiones que le pertenece a cada cliente+archivos a crear
+->Archivos que se ha creado para cada cliente
+->Error al crear archivo
