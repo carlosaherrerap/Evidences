@@ -187,7 +187,7 @@ class DataProcessor:
             # Copiar audio IVR (SIEMPRE se copia si el cliente tiene gestión IVR)
             audio_filename = f"ivr_{nombre}.mp3"
             audio_path = output_folder / audio_filename
-            shutil.copy2(audio_ivr_path, audio_path)
+            shutil.copy(audio_ivr_path, audio_path)
             files_created.append(audio_filename)
             
             # Filtrar en nuevos_datos por CUENTA y GESTION_EFECTIVA = IVR
@@ -312,7 +312,7 @@ class DataProcessor:
                     if os.path.exists(audio_source_path):
                         audio_filename = f"{nombre}_{cuenta}.mp3"
                         audio_dest_path = output_folder / audio_filename
-                        shutil.copy2(audio_source_path, audio_dest_path)
+                        shutil.copy(audio_source_path, audio_dest_path)
                         files_created.append(audio_filename)
                     else:
                         self.log(f"  ⚠️ Audio no encontrado en: {audio_source_path}")
@@ -324,7 +324,7 @@ class DataProcessor:
                     if os.path.exists(transcripcion_source_path):
                         transcripcion_filename = f"{nombre}_{cuenta}.txt"
                         transcripcion_dest_path = output_folder / transcripcion_filename
-                        shutil.copy2(transcripcion_source_path, transcripcion_dest_path)
+                        shutil.copy(transcripcion_source_path, transcripcion_dest_path)
                         files_created.append(transcripcion_filename)
                     else:
                         self.log(f"  ⚠️ Transcripción no encontrada en: {transcripcion_source_path}")
