@@ -477,6 +477,7 @@ class EvidenciasApp(ctk.CTk):
             folder_name = self.folder_name_entry.get().strip()
             base_output = Path(self.output_folder_path) / folder_name
             base_output.mkdir(parents=True, exist_ok=True)
+            os.utime(base_output, None) # Asegurar fecha de hoy en la carpeta principal
             
             self.log_message(f"\n📁 Carpeta de salida: {base_output}")
             

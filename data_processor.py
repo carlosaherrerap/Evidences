@@ -6,6 +6,7 @@ import pandas as pd
 import numpy as np
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from openpyxl import load_workbook
 from openpyxl.styles import numbers
@@ -91,6 +92,13 @@ class DataProcessor:
         
         # Aplicar formato de texto en openpyxl para que Excel lo reconozca como string
         wb = load_workbook(excel_path)
+        
+        # Resetear metadatos internos del Excel
+        now = datetime.now()
+        wb.properties.created = now
+        wb.properties.modified = now
+        wb.properties.lastModifiedBy = "Sistema de Evidencias"
+        
         ws = wb.active
         
         header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
@@ -107,6 +115,9 @@ class DataProcessor:
                 cell.number_format = numbers.FORMAT_TEXT
         
         wb.save(excel_path)
+        
+        # Asegurar que la fecha de modificación del archivo en el sistema sea la actual
+        os.utime(excel_path, None)
     
     def sanitize_dataframe(self, df: pd.DataFrame, skip_consolidados: bool = False) -> pd.DataFrame:
         """
@@ -187,7 +198,13 @@ class DataProcessor:
             # Copiar audio IVR (SIEMPRE se copia si el cliente tiene gestión IVR)
             audio_filename = f"ivr_{nombre}.mp3"
             audio_path = output_folder / audio_filename
+            
+            # Eliminar si existe para asegurar nueva fecha de creación
+            if audio_path.exists():
+                audio_path.unlink()
+                
             shutil.copy(audio_ivr_path, audio_path)
+            os.utime(audio_path, None) # Forzar fecha actual
             files_created.append(audio_filename)
             
             # Filtrar en nuevos_datos por CUENTA y GESTION_EFECTIVA = IVR
@@ -312,7 +329,13 @@ class DataProcessor:
                     if os.path.exists(audio_source_path):
                         audio_filename = f"{nombre}_{cuenta}.mp3"
                         audio_dest_path = output_folder / audio_filename
+                        
+                        # Eliminar si existe
+                        if audio_dest_path.exists():
+                            audio_dest_path.unlink()
+                            
                         shutil.copy(audio_source_path, audio_dest_path)
+                        os.utime(audio_dest_path, None)
                         files_created.append(audio_filename)
                     else:
                         self.log(f"  ⚠️ Audio no encontrado en: {audio_source_path}")
@@ -324,7 +347,13 @@ class DataProcessor:
                     if os.path.exists(transcripcion_source_path):
                         transcripcion_filename = f"{nombre}_{cuenta}.txt"
                         transcripcion_dest_path = output_folder / transcripcion_filename
+                        
+                        # Eliminar si existe
+                        if transcripcion_dest_path.exists():
+                            transcripcion_dest_path.unlink()
+                            
                         shutil.copy(transcripcion_source_path, transcripcion_dest_path)
+                        os.utime(transcripcion_dest_path, None)
                         files_created.append(transcripcion_filename)
                     else:
                         self.log(f"  ⚠️ Transcripción no encontrada en: {transcripcion_source_path}")
@@ -367,6 +396,7 @@ class DataProcessor:
             folder_name = f"{nombre}_{cuenta}"
             cliente_folder = base_output_folder / folder_name
             cliente_folder.mkdir(parents=True, exist_ok=True)
+            os.utime(cliente_folder, None) # Asegurar fecha de modificación actual
             
             self.log(f"\n📁 Procesando: {folder_name}")
             self.log(f"  Gestiones: {', '.join(gestiones)}")
