@@ -13,20 +13,20 @@ from openpyxl.styles import numbers
 from typing import Dict, List, Tuple, Optional
 
 
-class DataProcessor:
+class ProcesadorDatos:
     """Procesador de datos para generación de evidencias de gestión"""
     
-    def __init__(self, log_callback=None):
+    def __init__(self, funcion_log=None):
         """
         Inicializa el procesador de datos
         
         Args:
-            log_callback: Función para enviar mensajes de log a la interfaz
+            funcion_log: Función para enviar mensajes de log a la interfaz
         """
-        self.log_callback = log_callback
+        self.funcion_log = funcion_log
         
         # Mapeo de nombres de campos para sanitización
-        self.field_mappings = {
+        self.mapeo_campos = {
             'cuenta': ['cuenta', 'CUENTA', 'Cuenta'],
             'nombre': ['nombre', 'NOMBRE', 'nombres', 'NOMBRES', 'contacto', 'CONTACTO', 
                       'nombre completo', 'NOMBRE COMPLETO', 'nombre_completo', 'NOMBRE_COMPLETO'],
@@ -43,125 +43,125 @@ class DataProcessor:
             'nombre_completo_audio': ['nombre_completo', 'NOMBRE_COMPLETO', 'nombre completo']
         }
     
-    def log(self, message: str):
+    def registrar_log(self, mensaje: str):
         """Envía un mensaje de log a la interfaz"""
-        if self.log_callback:
-            self.log_callback(message)
+        if self.funcion_log:
+            self.funcion_log(mensaje)
             
-    def clean_id(self, value):
+    def limpiar_id(self, valor):
         """
         Limpia IDs numéricos (DNI, Teléfono, Cuenta) de forma segura.
         Preserva la precisión total evitando conversiones a float.
         """
-        if pd.isna(value) or value == '':
+        if pd.isna(valor) or valor == '':
             return ""
         
         # Convertir a string de forma segura
-        s_val = str(value).strip()
+        val_s = str(valor).strip()
         
         # Si tiene .0 al final (típico de floats en Excel), lo quitamos SIN usar float()
-        if s_val.endswith('.0'):
-            s_val = s_val[:-2]
+        if val_s.endswith('.0'):
+            val_s = val_s[:-2]
             
-        return s_val
+        return val_s
     
-    def save_excel_formatted(self, df: pd.DataFrame, excel_path: Path):
+    def guardar_excel_formateado(self, df: pd.DataFrame, ruta_excel: Path):
         """
         Guarda un DataFrame a Excel con formato de texto para campos numéricos
         y sin valores NaN (se muestran como celdas vacías)
         """
         # Crear copia para no modificar el original
-        df_formatted = df.copy()
+        df_formateado = df.copy()
         
         # Reemplazar NaN con cadena vacía
-        df_formatted = df_formatted.fillna('')
+        df_formateado = df_formateado.fillna('')
         
         # Columnas que deben ser texto puro
-        numeric_columns = ['cuenta', 'telefono', 'celular', 'dni', 'documento',
-                          'numero_credito', 'CUENTA', 'TELEFONO', 'CELULAR', 'DNI',
-                          'DOCUMENTO', 'NUMERO DE CREDITO', 'numero de credito']
+        columnas_numericas = ['cuenta', 'telefono', 'celular', 'dni', 'documento',
+                           'numero_credito', 'CUENTA', 'TELEFONO', 'CELULAR', 'DNI',
+                           'DOCUMENTO', 'NUMERO DE CREDITO', 'numero de credito']
         
         # Asegurar que todas las columnas ID sean strings limpios
-        for col in df_formatted.columns:
-            col_lower = col.lower().strip()
-            if col in numeric_columns or col_lower in [c.lower() for c in numeric_columns]:
-                df_formatted[col] = df_formatted[col].apply(self.clean_id)
+        for col in df_formateado.columns:
+            col_minusc = col.lower().strip()
+            if col in columnas_numericas or col_minusc in [c.lower() for c in columnas_numericas]:
+                df_formateado[col] = df_formateado[col].apply(self.limpiar_id)
         
         # Guardar el archivo Excel
-        df_formatted.to_excel(excel_path, index=False, engine='openpyxl')
+        df_formateado.to_excel(ruta_excel, index=False, engine='openpyxl')
         
         # Aplicar formato de texto en openpyxl para que Excel lo reconozca como string
-        wb = load_workbook(excel_path)
+        libro = load_workbook(ruta_excel)
         
         # Resetear metadatos internos del Excel
-        now = datetime.now()
-        wb.properties.created = now
-        wb.properties.modified = now
-        wb.properties.lastModifiedBy = "Sistema de Evidencias"
+        ahora = datetime.now()
+        libro.properties.created = ahora
+        libro.properties.modified = ahora
+        libro.properties.lastModifiedBy = "Sistema de Evidencias"
         
-        ws = wb.active
+        hoja = libro.active
         
-        header_row = list(ws.iter_rows(min_row=1, max_row=1, values_only=True))[0]
-        numeric_col_indices = []
-        for idx, col_name in enumerate(header_row, 1):
-            if col_name:
-                col_lower = str(col_name).lower().strip()
-                if col_name in numeric_columns or col_lower in [c.lower() for c in numeric_columns]:
-                    numeric_col_indices.append(idx)
+        fila_encabezado = list(hoja.iter_rows(min_row=1, max_row=1, values_only=True))[0]
+        indices_col_numericas = []
+        for idx, nombre_col in enumerate(fila_encabezado, 1):
+            if nombre_col:
+                col_minusc = str(nombre_col).lower().strip()
+                if nombre_col in columnas_numericas or col_minusc in [c.lower() for c in columnas_numericas]:
+                    indices_col_numericas.append(idx)
         
-        for col_idx in numeric_col_indices:
-            for row in range(2, ws.max_row + 1):
-                cell = ws.cell(row=row, column=col_idx)
-                cell.number_format = numbers.FORMAT_TEXT
+        for col_idx in indices_col_numericas:
+            for fila in range(2, hoja.max_row + 1):
+                celda = hoja.cell(row=fila, column=col_idx)
+                celda.number_format = numbers.FORMAT_TEXT
         
-        wb.save(excel_path)
+        libro.save(ruta_excel)
         
         # Asegurar que la fecha de modificación del archivo en el sistema sea la actual
-        os.utime(excel_path, None)
+        os.utime(ruta_excel, None)
     
-    def sanitize_dataframe(self, df: pd.DataFrame, skip_consolidados: bool = False) -> pd.DataFrame:
+    def sanitizar_dataframe(self, df: pd.DataFrame, omitir_consolidados: bool = False) -> pd.DataFrame:
         """
         Sanitiza los nombres de columnas de un DataFrame
         
         Args:
             df: DataFrame a sanitizar
-            skip_consolidados: Si es True, no sanitiza (para consolidados.xlsx)
+            omitir_consolidados: Si es True, no sanitiza (para consolidados.xlsx)
             
         Returns:
             DataFrame con columnas sanitizadas
         """
-        if skip_consolidados:
+        if omitir_consolidados:
             # Solo quitar espacios en blanco de valores, no cambiar nombres de columnas
             df = df.applymap(lambda x: x.strip() if isinstance(x, str) else x)
             return df
         
-        df_copy = df.copy()
+        df_copia = df.copy()
         
         # Renombrar columnas según el mapeo
-        column_rename = {}
-        for standard_name, variations in self.field_mappings.items():
-            for col in df_copy.columns:
-                if col.strip() in variations:
-                    column_rename[col] = standard_name
+        renombrar_columna = {}
+        for nombre_estandar, variaciones in self.mapeo_campos.items():
+            for col in df_copia.columns:
+                if col.strip() in variaciones:
+                    renombrar_columna[col] = nombre_estandar
                     break
         
-        df_copy.rename(columns=column_rename, inplace=True)
+        df_copia.rename(columns=renombrar_columna, inplace=True)
         
         # Quitar espacios en blanco de los valores y limpiar IDs
-        for col in df_copy.columns:
-            col_lower = col.lower().strip()
+        for col in df_copia.columns:
+            col_minusc = col.lower().strip()
             # Identificar columnas que deben ser tratadas como IDs limpios
-            is_id_col = col in ['cuenta', 'dni', 'telefono', 'numero_credito', 'documento', 'celular'] or \
-                        col_lower in ['cuenta', 'dni', 'telefono', 'numero_credito', 'documento', 'celular']
+            es_col_id = col in ['cuenta', 'dni', 'telefono', 'numero_credito', 'documento', 'celular'] or \
+                         col_minusc in ['cuenta', 'dni', 'telefono', 'numero_credito', 'documento', 'celular']
             
-            if is_id_col:
-                df_copy[col] = df_copy[col].apply(self.clean_id)
-            elif df_copy[col].dtype == 'object':
-                df_copy[col] = df_copy[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
+            if es_col_id:
+                df_copia[col] = df_copia[col].apply(self.limpiar_id)
+            elif df_copia[col].dtype == 'object':
+                df_copia[col] = df_copia[col].apply(lambda x: x.strip() if isinstance(x, str) else x)
         
-        return df_copy
+        return df_copia
     
-    def parse_gestion_efectiva(self, gestion_str: str) -> List[str]:
+    def analizar_gestion_efectiva(self, gestion_str: str) -> List[str]:
         """
         Parsea el campo GESTION EFECTIVA separado por comas
         
@@ -181,196 +181,196 @@ class DataProcessor:
         
         return list(set(gestiones))  # Eliminar duplicados
     
-    def create_ivr_evidence(self, cliente_data: Dict, nuevos_datos_df: pd.DataFrame, 
-                           output_folder: Path, audio_ivr_path: str) -> Tuple[bool, List[str]]:
+    def crear_evidencia_ivr(self, datos_cliente: Dict, df_nuevos_datos: pd.DataFrame, 
+                           carpeta_salida: Path, ruta_audio_ivr: str) -> Tuple[bool, List[str]]:
         """
         Crea archivos de evidencia IVR para un cliente
         
         Returns:
-            Tuple (success, files_created)
+            Tuple (exito, archivos_creados)
         """
-        files_created = []
+        archivos_creados = []
         
         try:
-            cuenta = cliente_data['cuenta']
-            nombre = cliente_data['nombre']
+            cuenta = datos_cliente['cuenta']
+            nombre = datos_cliente['nombre']
             
             # Copiar audio IVR (SIEMPRE se copia si el cliente tiene gestión IVR)
-            audio_filename = f"ivr_{nombre}.mp3"
-            audio_path = output_folder / audio_filename
+            nombre_archivo_audio = f"ivr_{nombre}.mp3"
+            ruta_audio = carpeta_salida / nombre_archivo_audio
             
             # Eliminar si existe para asegurar nueva fecha de creación
-            if audio_path.exists():
-                audio_path.unlink()
+            if ruta_audio.exists():
+                ruta_audio.unlink()
                 
-            shutil.copy(audio_ivr_path, audio_path)
-            os.utime(audio_path, None) # Forzar fecha actual
-            files_created.append(audio_filename)
+            shutil.copy(ruta_audio_ivr, ruta_audio)
+            os.utime(ruta_audio, None) # Forzar fecha actual
+            archivos_creados.append(nombre_archivo_audio)
             
             # Filtrar en nuevos_datos por CUENTA y GESTION_EFECTIVA = IVR
-            ivr_data = nuevos_datos_df[
-                (nuevos_datos_df['cuenta'] == cuenta) & 
-                (nuevos_datos_df['gestion_efectiva'].str.contains('IVR', na=False))
+            datos_ivr = df_nuevos_datos[
+                (df_nuevos_datos['cuenta'] == cuenta) & 
+                (df_nuevos_datos['gestion_efectiva'].str.contains('IVR', na=False))
             ].copy()
             
-            if ivr_data.empty:
-                self.log(f"  ⚠️ No se encontraron registros IVR en nuevos_datos para {nombre} (audio IVR copiado)")
+            if datos_ivr.empty:
+                self.registrar_log(f"  ⚠️ No se encontraron registros IVR en nuevos_datos para {nombre} (audio IVR copiado)")
             else:
                 # Agregar columna TIPO DE GESTION
-                ivr_data['TIPO DE GESTION'] = 'IVR'
+                datos_ivr['TIPO DE GESTION'] = 'IVR'
                 
                 # Crear archivo Excel con formato de texto para campos numéricos
-                excel_filename = f"{nombre}_ivr.xlsx"
-                excel_path = output_folder / excel_filename
-                self.save_excel_formatted(ivr_data, excel_path)
-                files_created.append(excel_filename)
+                nombre_archivo_excel = f"{nombre}_ivr.xlsx"
+                ruta_excel = carpeta_salida / nombre_archivo_excel
+                self.guardar_excel_formateado(datos_ivr, ruta_excel)
+                archivos_creados.append(nombre_archivo_excel)
             
-            return True, files_created
+            return True, archivos_creados
             
         except Exception as e:
-            self.log(f"  ❌ Error creando evidencia IVR: {str(e)}")
-            return False, files_created
+            self.registrar_log(f"  ❌ Error creando evidencia IVR: {str(e)}")
+            return False, archivos_creados
     
-    def create_sms_evidence(self, cliente_data: Dict, sms_df: pd.DataFrame, 
-                           output_folder: Path) -> Tuple[bool, List[str]]:
+    def crear_evidencia_sms(self, datos_cliente: Dict, df_sms: pd.DataFrame, 
+                           carpeta_salida: Path) -> Tuple[bool, List[str]]:
         """
         Crea archivo de evidencia SMS para un cliente
         
         Returns:
-            Tuple (success, files_created)
+            Tuple (exito, archivos_creados)
         """
-        files_created = []
+        archivos_creados = []
         
         try:
-            cuenta = cliente_data['cuenta']
-            nombre = cliente_data['nombre']
+            cuenta = datos_cliente['cuenta']
+            nombre = datos_cliente['nombre']
             
             # Filtrar en sms.xlsx por NUMERO DE CREDITO
-            sms_data = sms_df[sms_df['numero_credito'] == cuenta].copy()
+            datos_sms = df_sms[df_sms['numero_credito'] == cuenta].copy()
             
-            if sms_data.empty:
-                self.log(f"  ⚠️ No se encontraron registros SMS para {nombre}")
-                return False, files_created
+            if datos_sms.empty:
+                self.registrar_log(f"  ⚠️ No se encontraron registros SMS para {nombre}")
+                return False, archivos_creados
             
             # Crear archivo Excel con formato de texto para campos numéricos
-            excel_filename = f"SMS_{nombre}.xlsx"
-            excel_path = output_folder / excel_filename
-            self.save_excel_formatted(sms_data, excel_path)
-            files_created.append(excel_filename)
+            nombre_archivo_excel = f"SMS_{nombre}.xlsx"
+            ruta_excel = carpeta_salida / nombre_archivo_excel
+            self.guardar_excel_formateado(datos_sms, ruta_excel)
+            archivos_creados.append(nombre_archivo_excel)
             
-            return True, files_created
+            return True, archivos_creados
             
         except Exception as e:
-            self.log(f"  ❌ Error creando evidencia SMS: {str(e)}")
-            return False, files_created
+            self.registrar_log(f"  ❌ Error creando evidencia SMS: {str(e)}")
+            return False, archivos_creados
     
-    def create_call_evidence(self, cliente_data: Dict, nuevos_datos_df: pd.DataFrame,
-                            consolidados_df: Optional[pd.DataFrame], output_folder: Path) -> Tuple[bool, List[str]]:
+    def crear_evidencia_call(self, datos_cliente: Dict, df_nuevos_datos: pd.DataFrame,
+                            df_consolidados: Optional[pd.DataFrame], carpeta_salida: Path) -> Tuple[bool, List[str]]:
         """
         Crea archivos de evidencia CALL para un cliente
         
         Returns:
-            Tuple (success, files_created)
+            Tuple (exito, archivos_creados)
         """
-        files_created = []
+        archivos_creados = []
         
         try:
-            cuenta = cliente_data['cuenta']
-            nombre = cliente_data['nombre']
-            dni = cliente_data.get('dni', '')
-            telefono = cliente_data.get('telefono', '')
+            cuenta = datos_cliente['cuenta']
+            nombre = datos_cliente['nombre']
+            dni = datos_cliente.get('dni', '')
+            telefono = datos_cliente.get('telefono', '')
             
             # Filtrar en nuevos_datos por CUENTA y GESTION_EFECTIVA = CALL
-            call_data = nuevos_datos_df[
-                (nuevos_datos_df['cuenta'] == cuenta) & 
-                (nuevos_datos_df['gestion_efectiva'].str.contains('CALL', na=False))
+            datos_call = df_nuevos_datos[
+                (df_nuevos_datos['cuenta'] == cuenta) & 
+                (df_nuevos_datos['gestion_efectiva'].str.contains('CALL', na=False))
             ].copy()
             
-            if call_data.empty:
-                self.log(f"  ⚠️ No se encontraron registros CALL en nuevos_datos para {nombre}")
-                return False, files_created
+            if datos_call.empty:
+                self.registrar_log(f"  ⚠️ No se encontraron registros CALL en nuevos_datos para {nombre}")
+                return False, archivos_creados
             
             # Agregar columna TIPO DE GESTION
-            call_data['TIPO DE GESTION'] = 'CALL'
+            datos_call['TIPO DE GESTION'] = 'CALL'
             
             # Crear archivo Excel con formato de texto para campos numéricos
-            excel_filename = f"{nombre}_gestiones.xlsx"
-            excel_path = output_folder / excel_filename
-            self.save_excel_formatted(call_data, excel_path)
-            files_created.append(excel_filename)
+            nombre_archivo_excel = f"{nombre}_gestiones.xlsx"
+            ruta_excel = carpeta_salida / nombre_archivo_excel
+            self.guardar_excel_formateado(datos_call, ruta_excel)
+            archivos_creados.append(nombre_archivo_excel)
             
-            # Buscar audio y transcripción en consolidados (OPCIONAL - solo si existe consolidados_df)
-            if consolidados_df is not None:
-                audio_found = False
-                audio_row = None
+            # Buscar audio y transcripción en consolidados (OPCIONAL - solo si existe df_consolidados)
+            if df_consolidados is not None:
+                audio_encontrado = False
+                fila_audio = None
                 
                 # Primero intentar buscar por DNI
                 if dni:
-                    dni_clean = self.clean_id(dni)
-                    audio_row = consolidados_df[consolidados_df['dni'].apply(self.clean_id) == dni_clean]
-                    if not audio_row.empty:
-                        audio_found = True
+                    dni_limpio = self.limpiar_id(dni)
+                    fila_audio = df_consolidados[df_consolidados['dni'].apply(self.limpiar_id) == dni_limpio]
+                    if not fila_audio.empty:
+                        audio_encontrado = True
                 
                 # Si no se encontró por DNI, buscar por teléfono
-                if not audio_found and telefono:
-                    tel_clean = self.clean_id(telefono)
-                    audio_row = consolidados_df[consolidados_df['telefono'].apply(self.clean_id) == tel_clean]
-                    if not audio_row.empty:
-                        audio_found = True
+                if not audio_encontrado and telefono:
+                    tel_limpio = self.limpiar_id(telefono)
+                    fila_audio = df_consolidados[df_consolidados['telefono'].apply(self.limpiar_id) == tel_limpio]
+                    if not fila_audio.empty:
+                        audio_encontrado = True
                 
-                if audio_found and not audio_row.empty:
+                if audio_encontrado and not fila_audio.empty:
                     # Obtener nombre_completo para buscar audio y transcripción
-                    ruta = str(audio_row.iloc[0]['ruta'])
-                    nombre_completo_audio = str(audio_row.iloc[0]['nombre_completo'])
+                    ruta = str(fila_audio.iloc[0]['ruta'])
+                    audio_nombre_completo = str(fila_audio.iloc[0]['nombre_completo'])
                     
                     # 1. Copiar audio MP3
-                    audio_source_path = f"{ruta}/{nombre_completo_audio}.mp3"
+                    ruta_origen_audio = f"{ruta}/{audio_nombre_completo}.mp3"
                     
-                    if os.path.exists(audio_source_path):
-                        audio_filename = f"{nombre}_{cuenta}.mp3"
-                        audio_dest_path = output_folder / audio_filename
+                    if os.path.exists(ruta_origen_audio):
+                        nombre_archivo_audio = f"{nombre}_{cuenta}.mp3"
+                        ruta_destino_audio = carpeta_salida / nombre_archivo_audio
                         
                         # Eliminar si existe
-                        if audio_dest_path.exists():
-                            audio_dest_path.unlink()
+                        if ruta_destino_audio.exists():
+                            ruta_destino_audio.unlink()
                             
-                        shutil.copy(audio_source_path, audio_dest_path)
-                        os.utime(audio_dest_path, None)
-                        files_created.append(audio_filename)
+                        shutil.copy(ruta_origen_audio, ruta_destino_audio)
+                        os.utime(ruta_destino_audio, None)
+                        archivos_creados.append(nombre_archivo_audio)
                     else:
-                        self.log(f"  ⚠️ Audio no encontrado en: {audio_source_path}")
+                        self.registrar_log(f"  ⚠️ Audio no encontrado en: {ruta_origen_audio}")
                     
                     # 2. Buscar y copiar archivo de transcripción TXT
-                    transcripcion_base_path = "E:/ProcesoAudios/2025/everyVerse/15-19/evidencias_general"
-                    transcripcion_source_path = f"{transcripcion_base_path}/{nombre_completo_audio}.txt"
+                    ruta_base_transcripcion = "E:/ProcesoAudios/2025/everyVerse/15-19/evidencias_general"
+                    ruta_origen_transcripcion = f"{ruta_base_transcripcion}/{audio_nombre_completo}.txt"
                     
-                    if os.path.exists(transcripcion_source_path):
-                        transcripcion_filename = f"{nombre}_{cuenta}.txt"
-                        transcripcion_dest_path = output_folder / transcripcion_filename
+                    if os.path.exists(ruta_origen_transcripcion):
+                        nombre_archivo_transcripcion = f"{nombre}_{cuenta}.txt"
+                        ruta_destino_transcripcion = carpeta_salida / nombre_archivo_transcripcion
                         
                         # Eliminar si existe
-                        if transcripcion_dest_path.exists():
-                            transcripcion_dest_path.unlink()
+                        if ruta_destino_transcripcion.exists():
+                            ruta_destino_transcripcion.unlink()
                             
-                        shutil.copy(transcripcion_source_path, transcripcion_dest_path)
-                        os.utime(transcripcion_dest_path, None)
-                        files_created.append(transcripcion_filename)
+                        shutil.copy(ruta_origen_transcripcion, ruta_destino_transcripcion)
+                        os.utime(ruta_destino_transcripcion, None)
+                        archivos_creados.append(nombre_archivo_transcripcion)
                     else:
-                        self.log(f"  ⚠️ Transcripción no encontrada en: {transcripcion_source_path}")
+                        self.registrar_log(f"  ⚠️ Transcripción no encontrada en: {ruta_origen_transcripcion}")
                 else:
-                    self.log(f"  ⚠️ No se encontró audio CALL para {nombre} (DNI: {self.clean_id(dni)}, TEL: {self.clean_id(telefono)}) - Excel creado")
+                    self.registrar_log(f"  ⚠️ No se encontró audio CALL para {nombre} (DNI: {self.limpiar_id(dni)}, TEL: {self.limpiar_id(telefono)}) - Excel creado")
             else:
-                self.log(f"  ℹ️ consolidados.xlsx no proporcionado - Solo Excel CALL creado para {nombre}")
+                self.registrar_log(f"  ℹ️ consolidados.xlsx no proporcionado - Solo Excel CALL creado para {nombre}")
             
-            return True, files_created
+            return True, archivos_creados
             
         except Exception as e:
-            self.log(f"  ❌ Error creando evidencia CALL: {str(e)}")
-            return False, files_created
+            self.registrar_log(f"  ❌ Error creando evidencia CALL: {str(e)}")
+            return False, archivos_creados
     
-    def process_cliente(self, cliente_row: pd.Series, nuevos_datos_df: pd.DataFrame,
-                       sms_df: Optional[pd.DataFrame], consolidados_df: Optional[pd.DataFrame],
-                       audio_ivr_path: str, base_output_folder: Path) -> bool:
+    def procesar_cliente(self, fila_cliente: pd.Series, df_nuevos_datos: pd.DataFrame,
+                        df_sms: Optional[pd.DataFrame], df_consolidados: Optional[pd.DataFrame],
+                        ruta_audio_ivr: str, carpeta_salida_base: Path) -> bool:
         """
         Procesa un cliente individual y crea sus archivos de evidencia
         
@@ -379,86 +379,86 @@ class DataProcessor:
         """
         try:
             # Extraer datos del cliente (limpiando IDs inmediatamente)
-            cuenta = self.clean_id(cliente_row['cuenta'])
-            nombre = str(cliente_row['nombre'])
-            dni = self.clean_id(cliente_row.get('dni', ''))
-            telefono = self.clean_id(cliente_row.get('telefono', ''))
-            gestion_efectiva_str = str(cliente_row['gestion_efectiva'])
+            cuenta = self.limpiar_id(fila_cliente['cuenta'])
+            nombre = str(fila_cliente['nombre'])
+            dni = self.limpiar_id(fila_cliente.get('dni', ''))
+            telefono = self.limpiar_id(fila_cliente.get('telefono', ''))
+            gestion_efectiva_str = str(fila_cliente['gestion_efectiva'])
             
             # Parsear gestiones efectivas
-            gestiones = self.parse_gestion_efectiva(gestion_efectiva_str)
+            gestiones = self.analizar_gestion_efectiva(gestion_efectiva_str)
             
             if not gestiones:
-                self.log(f"⚠️ Cliente {nombre} no tiene gestiones efectivas")
+                self.registrar_log(f"⚠️ Cliente {nombre} no tiene gestiones efectivas")
                 return False
             
             # Crear carpeta del cliente
-            folder_name = f"{nombre}_{cuenta}"
-            cliente_folder = base_output_folder / folder_name
-            cliente_folder.mkdir(parents=True, exist_ok=True)
-            os.utime(cliente_folder, None) # Asegurar fecha de modificación actual
+            nombre_carpeta = f"{nombre}_{cuenta}"
+            carpeta_cliente = carpeta_salida_base / nombre_carpeta
+            carpeta_cliente.mkdir(parents=True, exist_ok=True)
+            os.utime(carpeta_cliente, None) # Asegurar fecha de modificación actual
             
-            self.log(f"\n📁 Procesando: {folder_name}")
-            self.log(f"  Gestiones: {', '.join(gestiones)}")
+            self.registrar_log(f"\n📁 Procesando: {nombre_carpeta}")
+            self.registrar_log(f"  Gestiones: {', '.join(gestiones)}")
             
-            cliente_data = {
+            datos_cliente = {
                 'cuenta': cuenta,
                 'nombre': nombre,
                 'dni': dni,
                 'telefono': telefono
             }
             
-            files_created_total = []
+            total_archivos_creados = []
             
             # Procesar IVR
             if 'IVR' in gestiones:
-                success, files = self.create_ivr_evidence(
-                    cliente_data, nuevos_datos_df, cliente_folder, audio_ivr_path
+                exito, archivos = self.crear_evidencia_ivr(
+                    datos_cliente, df_nuevos_datos, carpeta_cliente, ruta_audio_ivr
                 )
-                if success:
-                    files_created_total.extend(files)
-                    self.log(f"  ✅ IVR: {', '.join(files)}")
+                if exito:
+                    total_archivos_creados.extend(archivos)
+                    self.registrar_log(f"  ✅ IVR: {', '.join(archivos)}")
             
             # Procesar SMS
-            if 'SMS' in gestiones and sms_df is not None:
-                success, files = self.create_sms_evidence(
-                    cliente_data, sms_df, cliente_folder
+            if 'SMS' in gestiones and df_sms is not None:
+                exito, archivos = self.crear_evidencia_sms(
+                    datos_cliente, df_sms, carpeta_cliente
                 )
-                if success:
-                    files_created_total.extend(files)
-                    self.log(f"  ✅ SMS: {', '.join(files)}")
+                if exito:
+                    total_archivos_creados.extend(archivos)
+                    self.registrar_log(f"  ✅ SMS: {', '.join(archivos)}")
             
-            # Procesar CALL (consolidados_df es opcional)
+            # Procesar CALL (df_consolidados es opcional)
             if 'CALL' in gestiones:
-                success, files = self.create_call_evidence(
-                    cliente_data, nuevos_datos_df, consolidados_df, cliente_folder
+                exito, archivos = self.crear_evidencia_call(
+                    datos_cliente, df_nuevos_datos, df_consolidados, carpeta_cliente
                 )
-                if success:
-                    files_created_total.extend(files)
-                    self.log(f"  ✅ CALL: {', '.join(files)}")
+                if exito:
+                    total_archivos_creados.extend(archivos)
+                    self.registrar_log(f"  ✅ CALL: {', '.join(archivos)}")
             
-            self.log(f"  📊 Total archivos creados: {len(files_created_total)}")
+            self.registrar_log(f"  📊 Total archivos creados: {len(total_archivos_creados)}")
             
             return True
             
         except Exception as e:
-            self.log(f"❌ Error procesando cliente {nombre}: {str(e)}")
+            self.registrar_log(f"❌ Error procesando cliente {nombre}: {str(e)}")
             return False
     
-    def validate_dataframe_fields(self, df: pd.DataFrame, required_fields: List[str], 
-                                  file_name: str) -> Tuple[bool, str]:
+    def validar_campos_dataframe(self, df: pd.DataFrame, campos_requeridos: List[str], 
+                                  nombre_archivo: str) -> Tuple[bool, str]:
         """
         Valida que un DataFrame contenga los campos requeridos
         
         Returns:
-            Tuple (valid, error_message)
+            Tuple (valido, mensaje_error)
         """
-        missing_fields = []
-        for field in required_fields:
-            if field not in df.columns:
-                missing_fields.append(field)
+        campos_faltantes = []
+        for campo in campos_requeridos:
+            if campo not in df.columns:
+                campos_faltantes.append(campo)
         
-        if missing_fields:
-            return False, f"{file_name}: Faltan campos {', '.join(missing_fields)}"
+        if campos_faltantes:
+            return False, f"{nombre_archivo}: Faltan campos {', '.join(campos_faltantes)}"
         
         return True, ""

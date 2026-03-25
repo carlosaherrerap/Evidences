@@ -8,10 +8,10 @@ import pandas as pd
 import os
 import threading
 from pathlib import Path
-from data_processor import DataProcessor
+from data_processor import ProcesadorDatos
 
 
-class EvidenciasApp(ctk.CTk):
+class AppEvidencias(ctk.CTk):
     """Aplicación principal para procesamiento de evidencias"""
     
     def __init__(self):
@@ -26,64 +26,64 @@ class EvidenciasApp(ctk.CTk):
         ctk.set_default_color_theme("blue")
         
         # Variables para almacenar rutas de archivos
-        self.datos_fuente_path = None
-        self.nuevos_datos_path = None
-        self.audio_ivr_path = None
-        self.sms_path = None
-        self.consolidados_path = None
-        self.output_folder_path = None
+        self.ruta_datos_fuente = None
+        self.ruta_nuevos_datos = None
+        self.ruta_audio_ivr = None
+        self.ruta_sms = None
+        self.ruta_consolidados = None
+        self.ruta_carpeta_salida = None
         
         # DataFrames cargados
-        self.datos_fuente_df = None
-        self.nuevos_datos_df = None
-        self.sms_df = None
-        self.consolidados_df = None
+        self.df_datos_fuente = None
+        self.df_nuevos_datos = None
+        self.df_sms = None
+        self.df_consolidados = None
         
         # Procesador de datos
-        self.processor = DataProcessor(log_callback=self.log_message)
+        self.procesador = ProcesadorDatos(funcion_log=self.mensajear_log)
         
         # Crear interfaz
-        self.create_ui()
+        self.crear_interfaz()
     
-    def create_ui(self):
+    def crear_interfaz(self):
         """Crea la interfaz de usuario"""
         
         # Contenedor principal con scroll
-        self.main_container = ctk.CTkScrollableFrame(self, fg_color="transparent")
-        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
+        self.contenedor_principal = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.contenedor_principal.pack(fill="both", expand=True, padx=20, pady=20)
         
         # ===== TÍTULO =====
-        title_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        title_frame.pack(fill="x", pady=(0, 20))
+        titulo_frame = ctk.CTkFrame(self.contenedor_principal, fg_color="transparent")
+        titulo_frame.pack(fill="x", pady=(0, 20))
         
-        title_label = ctk.CTkLabel(
-            title_frame,
+        titulo_label = ctk.CTkLabel(
+            titulo_frame,
             text="📋 EVIDENCIAS - SISTEMA DE PROCESAMIENTO",
             font=ctk.CTkFont(size=28, weight="bold")
         )
-        title_label.pack()
+        titulo_label.pack()
         
-        subtitle_label = ctk.CTkLabel(
-            title_frame,
+        subtitulo_label = ctk.CTkLabel(
+            titulo_frame,
             text="Generación automática de evidencias IVR, SMS y CALL",
             font=ctk.CTkFont(size=14),
             text_color="gray"
         )
-        subtitle_label.pack()
+        subtitulo_label.pack()
         
         # ===== SECCIÓN: DATOS BASE =====
-        self.create_section_header("📁 DATOS BASE")
+        self.crear_encabezado_seccion("📁 DATOS BASE")
         
-        datos_frame = ctk.CTkFrame(self.main_container)
+        datos_frame = ctk.CTkFrame(self.contenedor_principal)
         datos_frame.pack(fill="x", pady=(0, 15))
         
         # datos_fuente.xlsx
-        self.create_file_selector(
+        self.crear_selector_archivo(
             datos_frame,
             "datos_fuente.xlsx:",
             "datos_fuente",
-            self.on_datos_fuente_selected,
-            row=0
+            self.al_seleccionar_datos_fuente,
+            fila=0
         )
         
         # Label para mostrar cantidad de clientes
@@ -96,444 +96,444 @@ class EvidenciasApp(ctk.CTk):
         self.clientes_label.grid(row=1, column=0, columnspan=3, padx=20, pady=(5, 10), sticky="w")
         
         # nuevos_datos.xlsx
-        self.create_file_selector(
+        self.crear_selector_archivo(
             datos_frame,
             "nuevos_datos.xlsx:",
             "nuevos_datos",
-            self.on_nuevos_datos_selected,
-            row=2
+            self.al_seleccionar_nuevos_datos,
+            fila=2
         )
         
         # ===== SECCIÓN: IVR =====
-        self.create_section_header("🎤 IVR")
+        self.crear_encabezado_seccion("🎤 IVR")
         
-        ivr_frame = ctk.CTkFrame(self.main_container)
+        ivr_frame = ctk.CTkFrame(self.contenedor_principal)
         ivr_frame.pack(fill="x", pady=(0, 15))
         
-        self.create_file_selector(
+        self.crear_selector_archivo(
             ivr_frame,
             "Seleccionar audio IVR (.mp3):",
             "audio_ivr",
-            self.on_audio_ivr_selected,
-            row=0,
-            file_types=[("Audio MP3", "*.mp3")]
+            self.al_seleccionar_audio_ivr,
+            fila=0,
+            tipos_archivo=[("Audio MP3", "*.mp3")]
         )
         
         # ===== SECCIÓN: SMS =====
-        self.create_section_header("📱 SMS")
+        self.crear_encabezado_seccion("📱 SMS")
         
-        sms_frame = ctk.CTkFrame(self.main_container)
+        sms_frame = ctk.CTkFrame(self.contenedor_principal)
         sms_frame.pack(fill="x", pady=(0, 15))
         
-        self.create_file_selector(
+        self.crear_selector_archivo(
             sms_frame,
             "Seleccionar archivo sms.xlsx:",
             "sms",
-            self.on_sms_selected,
-            row=0
+            self.al_seleccionar_sms,
+            fila=0
         )
         
         # ===== SECCIÓN: CALL =====
-        self.create_section_header("📞 CALL")
+        self.crear_encabezado_seccion("📞 CALL")
         
-        call_frame = ctk.CTkFrame(self.main_container)
+        call_frame = ctk.CTkFrame(self.contenedor_principal)
         call_frame.pack(fill="x", pady=(0, 15))
         
-        self.create_file_selector(
+        self.crear_selector_archivo(
             call_frame,
             "Seleccionar archivo consolidados.xlsx:",
             "consolidados",
-            self.on_consolidados_selected,
-            row=0
+            self.al_seleccionar_consolidados,
+            fila=0
         )
         
         # ===== SECCIÓN: CONFIGURACIÓN DE SALIDA =====
-        self.create_section_header("💾 CONFIGURACIÓN DE SALIDA")
+        self.crear_encabezado_seccion("💾 CONFIGURACIÓN DE SALIDA")
         
-        output_frame = ctk.CTkFrame(self.main_container)
-        output_frame.pack(fill="x", pady=(0, 15))
+        salida_frame = ctk.CTkFrame(self.contenedor_principal)
+        salida_frame.pack(fill="x", pady=(0, 15))
         
         # Selector de carpeta de salida
-        folder_label = ctk.CTkLabel(
-            output_frame,
+        etiqueta_carpeta = ctk.CTkLabel(
+            salida_frame,
             text="Carpeta de salida:",
             font=ctk.CTkFont(size=13, weight="bold")
         )
-        folder_label.grid(row=0, column=0, padx=20, pady=10, sticky="w")
+        etiqueta_carpeta.grid(row=0, column=0, padx=20, pady=10, sticky="w")
         
-        self.output_folder_entry = ctk.CTkEntry(
-            output_frame,
+        self.entrada_carpeta_salida = ctk.CTkEntry(
+            salida_frame,
             placeholder_text="Ninguna carpeta seleccionada",
             width=500,
             state="readonly"
         )
-        self.output_folder_entry.grid(row=0, column=1, padx=(10, 10), pady=10, sticky="ew")
+        self.entrada_carpeta_salida.grid(row=0, column=1, padx=(10, 10), pady=10, sticky="ew")
         
-        self.output_folder_btn = ctk.CTkButton(
-            output_frame,
+        self.boton_carpeta_salida = ctk.CTkButton(
+            salida_frame,
             text="Seleccionar carpeta",
-            command=self.select_output_folder,
+            command=self.seleccionar_carpeta_salida,
             width=150
         )
-        self.output_folder_btn.grid(row=0, column=2, padx=(0, 20), pady=10)
+        self.boton_carpeta_salida.grid(row=0, column=2, padx=(0, 20), pady=10)
         
         # Nombre de carpeta principal
-        name_label = ctk.CTkLabel(
-            output_frame,
+        etiqueta_nombre = ctk.CTkLabel(
+            salida_frame,
             text="Nombre de carpeta contenedora:",
             font=ctk.CTkFont(size=13, weight="bold")
         )
-        name_label.grid(row=1, column=0, padx=20, pady=10, sticky="w")
+        etiqueta_nombre.grid(row=1, column=0, padx=20, pady=10, sticky="w")
         
-        self.folder_name_entry = ctk.CTkEntry(
-            output_frame,
+        self.entrada_nombre_carpeta = ctk.CTkEntry(
+            salida_frame,
             placeholder_text="Ej: Evidencias_2024",
             width=500
         )
-        self.folder_name_entry.grid(row=1, column=1, padx=(10, 10), pady=10, sticky="ew")
+        self.entrada_nombre_carpeta.grid(row=1, column=1, padx=(10, 10), pady=10, sticky="ew")
         
-        output_frame.columnconfigure(1, weight=1)
+        salida_frame.columnconfigure(1, weight=1)
         
         # ===== BOTÓN PROCESAR =====
-        process_frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
-        process_frame.pack(fill="x", pady=(15, 10))
+        procesar_frame = ctk.CTkFrame(self.contenedor_principal, fg_color="transparent")
+        procesar_frame.pack(fill="x", pady=(15, 10))
         
-        self.process_btn = ctk.CTkButton(
-            process_frame,
+        self.boton_procesar = ctk.CTkButton(
+            procesar_frame,
             text="🚀 PROCESAR EVIDENCIAS",
-            command=self.start_processing,
+            command=self.iniciar_procesamiento,
             height=50,
             font=ctk.CTkFont(size=16, weight="bold"),
             fg_color="#4CAF50",
             hover_color="#45a049"
         )
-        self.process_btn.pack(pady=10)
+        self.boton_procesar.pack(pady=10)
         
         # ===== TERMINAL DE LOGS =====
-        self.create_section_header("📊 LOG DE PROCESAMIENTO")
+        self.crear_encabezado_seccion("📊 LOG DE PROCESAMIENTO")
         
-        log_frame = ctk.CTkFrame(self.main_container)
+        log_frame = ctk.CTkFrame(self.contenedor_principal)
         log_frame.pack(fill="both", expand=True, pady=(0, 10))
         
-        self.log_text = ctk.CTkTextbox(
+        self.texto_log = ctk.CTkTextbox(
             log_frame,
             height=250,
             font=ctk.CTkFont(family="Consolas", size=11),
             wrap="word"
         )
-        self.log_text.pack(fill="both", expand=True, padx=10, pady=10)
+        self.texto_log.pack(fill="both", expand=True, padx=10, pady=10)
         
         # Mensaje inicial
-        self.log_message("💡 Sistema iniciado. Por favor, seleccione los archivos necesarios.")
-        self.log_message("=" * 80)
+        self.mensajear_log("💡 Sistema iniciado. Por favor, seleccione los archivos necesarios.")
+        self.mensajear_log("=" * 80)
     
-    def create_section_header(self, text: str):
+    def crear_encabezado_seccion(self, texto: str):
         """Crea un encabezado de sección"""
-        frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
+        frame = ctk.CTkFrame(self.contenedor_principal, fg_color="transparent")
         frame.pack(fill="x", pady=(15, 5))
         
-        label = ctk.CTkLabel(
+        etiqueta = ctk.CTkLabel(
             frame,
-            text=text,
+            text=texto,
             font=ctk.CTkFont(size=16, weight="bold"),
             anchor="w"
         )
-        label.pack(side="left", padx=5)
+        etiqueta.pack(side="left", padx=5)
         
         # Línea divisoria
-        separator = ctk.CTkFrame(frame, height=2, fg_color="gray30")
-        separator.pack(side="left", fill="x", expand=True, padx=(10, 0))
+        separador = ctk.CTkFrame(frame, height=2, fg_color="gray30")
+        separador.pack(side="left", fill="x", expand=True, padx=(10, 0))
     
-    def create_file_selector(self, parent, label_text: str, var_name: str, 
-                            callback, row: int, file_types=None):
+    def crear_selector_archivo(self, padre, texto_etiqueta: str, nombre_variable: str, 
+                            callback_seleccion, fila: int, tipos_archivo=None):
         """Crea un selector de archivo"""
-        if file_types is None:
-            file_types = [("Excel files", "*.xlsx"), ("All files", "*.*")]
+        if tipos_archivo is None:
+            tipos_archivo = [("Archivos de Excel", "*.xlsx"), ("Todos los archivos", "*.*")]
         
-        label = ctk.CTkLabel(
-            parent,
-            text=label_text,
+        etiqueta = ctk.CTkLabel(
+            padre,
+            text=texto_etiqueta,
             font=ctk.CTkFont(size=13, weight="bold")
         )
-        label.grid(row=row, column=0, padx=20, pady=10, sticky="w")
+        etiqueta.grid(row=fila, column=0, padx=20, pady=10, sticky="w")
         
-        entry = ctk.CTkEntry(
-            parent,
+        entrada = ctk.CTkEntry(
+            padre,
             placeholder_text="Ningún archivo seleccionado",
             width=500,
             state="readonly"
         )
-        entry.grid(row=row, column=1, padx=(10, 10), pady=10, sticky="ew")
+        entrada.grid(row=fila, column=1, padx=(10, 10), pady=10, sticky="ew")
         
-        # Guardar referencia al entry
-        setattr(self, f"{var_name}_entry", entry)
+        # Guardar referencia a la entrada
+        setattr(self, f"entrada_{nombre_variable}", entrada)
         
-        btn = ctk.CTkButton(
-            parent,
+        boton = ctk.CTkButton(
+            padre,
             text="Seleccionar",
-            command=lambda: self.select_file(var_name, callback, file_types),
+            command=lambda: self.seleccionar_archivo(nombre_variable, callback_seleccion, tipos_archivo),
             width=150
         )
-        btn.grid(row=row, column=2, padx=(0, 20), pady=10)
+        boton.grid(row=fila, column=2, padx=(0, 20), pady=10)
         
         # Guardar referencia al botón
-        setattr(self, f"{var_name}_btn", btn)
+        setattr(self, f"boton_{nombre_variable}", boton)
         
-        parent.columnconfigure(1, weight=1)
+        padre.columnconfigure(1, weight=1)
     
-    def select_file(self, var_name: str, callback, file_types):
+    def seleccionar_archivo(self, nombre_variable: str, callback_seleccion, tipos_archivo):
         """Abre diálogo para seleccionar archivo"""
-        filename = filedialog.askopenfilename(
+        nombre_archivo = filedialog.askopenfilename(
             title=f"Seleccionar archivo",
-            filetypes=file_types
+            filetypes=tipos_archivo
         )
         
-        if filename:
-            # Actualizar entry
-            entry = getattr(self, f"{var_name}_entry")
-            entry.configure(state="normal")
-            entry.delete(0, "end")
-            entry.insert(0, os.path.basename(filename))
-            entry.configure(state="readonly")
+        if nombre_archivo:
+            # Actualizar entrada
+            entrada = getattr(self, f"entrada_{nombre_variable}")
+            entrada.configure(state="normal")
+            entrada.delete(0, "end")
+            entrada.insert(0, os.path.basename(nombre_archivo))
+            entrada.configure(state="readonly")
             
             # Actualizar botón
-            btn = getattr(self, f"{var_name}_btn")
-            btn.configure(text="✓ Seleccionado", fg_color="#4CAF50")
+            boton = getattr(self, f"boton_{nombre_variable}")
+            boton.configure(text="✓ Seleccionado", fg_color="#4CAF50")
             
             # Llamar al callback
-            if callback:
-                callback(filename)
+            if callback_seleccion:
+                callback_seleccion(nombre_archivo)
     
-    def select_output_folder(self):
+    def seleccionar_carpeta_salida(self):
         """Selecciona carpeta de salida"""
-        folder = filedialog.askdirectory(title="Seleccionar carpeta de salida")
+        carpeta = filedialog.askdirectory(title="Seleccionar carpeta de salida")
         
-        if folder:
-            self.output_folder_path = folder
-            self.output_folder_entry.configure(state="normal")
-            self.output_folder_entry.delete(0, "end")
-            self.output_folder_entry.insert(0, folder)
-            self.output_folder_entry.configure(state="readonly")
+        if carpeta:
+            self.ruta_carpeta_salida = carpeta
+            self.entrada_carpeta_salida.configure(state="normal")
+            self.entrada_carpeta_salida.delete(0, "end")
+            self.entrada_carpeta_salida.insert(0, carpeta)
+            self.entrada_carpeta_salida.configure(state="readonly")
             
-            self.output_folder_btn.configure(text="✓ Seleccionada", fg_color="#4CAF50")
+            self.boton_carpeta_salida.configure(text="✓ Seleccionada", fg_color="#4CAF50")
     
-    def on_datos_fuente_selected(self, filepath: str):
+    def al_seleccionar_datos_fuente(self, ruta_archivo: str):
         """Callback cuando se selecciona datos_fuente.xlsx"""
         try:
-            self.datos_fuente_path = filepath
-            df = pd.read_excel(filepath, dtype=str)
-            self.datos_fuente_df = self.processor.sanitize_dataframe(df)
+            self.ruta_datos_fuente = ruta_archivo
+            df = pd.read_excel(ruta_archivo, dtype=str)
+            self.df_datos_fuente = self.procesador.sanitizar_dataframe(df)
             
-            num_clientes = len(self.datos_fuente_df)
+            num_clientes = len(self.df_datos_fuente)
             self.clientes_label.configure(
                 text=f"✅ {num_clientes} clientes encontrados | {num_clientes} carpetas a crear"
             )
             
-            self.log_message(f"✅ Archivo datos_fuente.xlsx cargado: {num_clientes} clientes")
+            self.mensajear_log(f"✅ Archivo datos_fuente.xlsx cargado: {num_clientes} clientes")
             
             # Validar campos requeridos
-            required = ['cuenta', 'nombre', 'gestion_efectiva']
-            valid, error = self.processor.validate_dataframe_fields(
-                self.datos_fuente_df, required, "datos_fuente.xlsx"
+            requeridos = ['cuenta', 'nombre', 'gestion_efectiva']
+            valido, error = self.procesador.validar_campos_dataframe(
+                self.df_datos_fuente, requeridos, "datos_fuente.xlsx"
             )
-            if not valid:
-                self.log_message(f"⚠️ {error}")
+            if not valido:
+                self.mensajear_log(f"⚠️ {error}")
                 
         except Exception as e:
-            self.log_message(f"❌ Error cargando datos_fuente.xlsx: {str(e)}")
+            self.mensajear_log(f"❌ Error cargando datos_fuente.xlsx: {str(e)}")
             messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{str(e)}")
     
-    def on_nuevos_datos_selected(self, filepath: str):
+    def al_seleccionar_nuevos_datos(self, ruta_archivo: str):
         """Callback cuando se selecciona nuevos_datos.xlsx"""
         try:
-            self.nuevos_datos_path = filepath
-            df = pd.read_excel(filepath, dtype=str)
-            self.nuevos_datos_df = self.processor.sanitize_dataframe(df)
+            self.ruta_nuevos_datos = ruta_archivo
+            df = pd.read_excel(ruta_archivo, dtype=str)
+            self.df_nuevos_datos = self.procesador.sanitizar_dataframe(df)
             
-            self.log_message(f"✅ Archivo nuevos_datos.xlsx cargado: {len(self.nuevos_datos_df)} registros")
+            self.mensajear_log(f"✅ Archivo nuevos_datos.xlsx cargado: {len(self.df_nuevos_datos)} registros")
             
             # Validar campos requeridos
-            required = ['cuenta', 'gestion_efectiva']
-            valid, error = self.processor.validate_dataframe_fields(
-                self.nuevos_datos_df, required, "nuevos_datos.xlsx"
+            requeridos = ['cuenta', 'gestion_efectiva']
+            valido, error = self.procesador.validar_campos_dataframe(
+                self.df_nuevos_datos, requeridos, "nuevos_datos.xlsx"
             )
-            if not valid:
-                self.log_message(f"⚠️ {error}")
+            if not valido:
+                self.mensajear_log(f"⚠️ {error}")
                 
         except Exception as e:
-            self.log_message(f"❌ Error cargando nuevos_datos.xlsx: {str(e)}")
+            self.mensajear_log(f"❌ Error cargando nuevos_datos.xlsx: {str(e)}")
             messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{str(e)}")
     
-    def on_audio_ivr_selected(self, filepath: str):
+    def al_seleccionar_audio_ivr(self, ruta_archivo: str):
         """Callback cuando se selecciona audio IVR"""
-        self.audio_ivr_path = filepath
-        self.log_message(f"✅ Audio IVR seleccionado: {os.path.basename(filepath)}")
+        self.ruta_audio_ivr = ruta_archivo
+        self.mensajear_log(f"✅ Audio IVR seleccionado: {os.path.basename(ruta_archivo)}")
     
-    def on_sms_selected(self, filepath: str):
+    def al_seleccionar_sms(self, ruta_archivo: str):
         """Callback cuando se selecciona sms.xlsx"""
         try:
-            self.sms_path = filepath
-            df = pd.read_excel(filepath, dtype=str)
-            self.sms_df = self.processor.sanitize_dataframe(df)
+            self.ruta_sms = ruta_archivo
+            df = pd.read_excel(ruta_archivo, dtype=str)
+            self.df_sms = self.procesador.sanitizar_dataframe(df)
             
-            self.log_message(f"✅ Archivo sms.xlsx cargado: {len(self.sms_df)} registros")
+            self.mensajear_log(f"✅ Archivo sms.xlsx cargado: {len(self.df_sms)} registros")
             
             # Validar campo requerido
-            required = ['numero_credito']
-            valid, error = self.processor.validate_dataframe_fields(
-                self.sms_df, required, "sms.xlsx"
+            requerido = ['numero_credito']
+            valido, error = self.procesador.validar_campos_dataframe(
+                self.df_sms, requerido, "sms.xlsx"
             )
-            if not valid:
-                self.log_message(f"⚠️ {error}")
+            if not valido:
+                self.mensajear_log(f"⚠️ {error}")
                 
         except Exception as e:
-            self.log_message(f"❌ Error cargando sms.xlsx: {str(e)}")
+            self.mensajear_log(f"❌ Error cargando sms.xlsx: {str(e)}")
             messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{str(e)}")
     
-    def on_consolidados_selected(self, filepath: str):
+    def al_seleccionar_consolidados(self, ruta_archivo: str):
         """Callback cuando se selecciona consolidados.xlsx"""
         try:
-            self.consolidados_path = filepath
-            df = pd.read_excel(filepath, dtype=str)
+            self.ruta_consolidados = ruta_archivo
+            df = pd.read_excel(ruta_archivo, dtype=str)
             # No sanitizar consolidados, mantener nombres originales para la ruta
-            self.consolidados_df = df
+            self.df_consolidados = df
             
             # Solo quitar espacios en blanco
-            for col in self.consolidados_df.columns:
-                if self.consolidados_df[col].dtype == 'object':
-                    self.consolidados_df[col] = self.consolidados_df[col].apply(
+            for col in self.df_consolidados.columns:
+                if self.df_consolidados[col].dtype == 'object':
+                    self.df_consolidados[col] = self.df_consolidados[col].apply(
                         lambda x: x.strip() if isinstance(x, str) else x
                     )
             
-            self.log_message(f"✅ Archivo consolidados.xlsx cargado: {len(self.consolidados_df)} registros")
+            self.mensajear_log(f"✅ Archivo consolidados.xlsx cargado: {len(self.df_consolidados)} registros")
             
             # Validar campos requeridos (usando nombres originales)
-            required = ['dni', 'telefono', 'ruta', 'nombre_completo']
-            missing = [f for f in required if f not in self.consolidados_df.columns]
-            if missing:
-                self.log_message(f"⚠️ consolidados.xlsx: Faltan campos {', '.join(missing)}")
+            requeridos = ['dni', 'telefono', 'ruta', 'nombre_completo']
+            faltantes = [f for f in requeridos if f not in self.df_consolidados.columns]
+            if faltantes:
+                self.mensajear_log(f"⚠️ consolidados.xlsx: Faltan campos {', '.join(faltantes)}")
                 
         except Exception as e:
-            self.log_message(f"❌ Error cargando consolidados.xlsx: {str(e)}")
+            self.mensajear_log(f"❌ Error cargando consolidados.xlsx: {str(e)}")
             messagebox.showerror("Error", f"No se pudo cargar el archivo:\n{str(e)}")
     
-    def log_message(self, message: str):
+    def mensajear_log(self, mensaje: str):
         """Agrega mensaje al log"""
-        self.log_text.insert("end", message + "\n")
-        self.log_text.see("end")
+        self.texto_log.insert("end", mensaje + "\n")
+        self.texto_log.see("end")
         self.update_idletasks()
     
-    def validate_inputs(self) -> bool:
+    def validar_entradas(self) -> bool:
         """Valida que todos los archivos necesarios estén seleccionados"""
-        errors = []
+        errores = []
         
-        if not self.datos_fuente_path:
-            errors.append("• datos_fuente.xlsx no seleccionado")
+        if not self.ruta_datos_fuente:
+            errores.append("• datos_fuente.xlsx no seleccionado")
         
-        if not self.nuevos_datos_path:
-            errors.append("• nuevos_datos.xlsx no seleccionado")
+        if not self.ruta_nuevos_datos:
+            errores.append("• nuevos_datos.xlsx no seleccionado")
         
-        if not self.audio_ivr_path:
-            errors.append("• Audio IVR no seleccionado")
+        if not self.ruta_audio_ivr:
+            errores.append("• Audio IVR no seleccionado")
         
-        if not self.output_folder_path:
-            errors.append("• Carpeta de salida no seleccionada")
+        if not self.ruta_carpeta_salida:
+            errores.append("• Carpeta de salida no seleccionada")
         
-        if not self.folder_name_entry.get().strip():
-            errors.append("• Nombre de carpeta contenedora vacío")
+        if not self.entrada_nombre_carpeta.get().strip():
+            errores.append("• Nombre de carpeta contenedora vacío")
         
-        if errors:
-            error_msg = "Por favor, complete los siguientes campos:\n\n" + "\n".join(errors)
-            messagebox.showwarning("Campos incompletos", error_msg)
-            self.log_message("⚠️ Validación fallida: campos incompletos")
+        if errores:
+            mensaje_error = "Por favor, complete los siguientes campos:\n\n" + "\n".join(errores)
+            messagebox.showwarning("Campos incompletos", mensaje_error)
+            self.mensajear_log("⚠️ Validación fallida: campos incompletos")
             return False
         
         return True
     
-    def start_processing(self):
+    def iniciar_procesamiento(self):
         """Inicia el procesamiento en un hilo separado"""
-        if not self.validate_inputs():
+        if not self.validar_entradas():
             return
         
         # Deshabilitar botón de procesamiento
-        self.process_btn.configure(state="disabled", text="⏳ Procesando...")
+        self.boton_procesar.configure(state="disabled", text="⏳ Procesando...")
         
         # Limpiar log anterior
-        self.log_text.delete("1.0", "end")
+        self.texto_log.delete("1.0", "end")
         
         # Ejecutar en hilo separado para no bloquear la UI
-        thread = threading.Thread(target=self.process_evidencias)
-        thread.daemon = True
-        thread.start()
+        hilo = threading.Thread(target=self.procesar_evidencias)
+        hilo.daemon = True
+        hilo.start()
     
-    def process_evidencias(self):
+    def procesar_evidencias(self):
         """Procesa todas las evidencias"""
         try:
-            self.log_message("=" * 80)
-            self.log_message("🚀 INICIANDO PROCESAMIENTO DE EVIDENCIAS")
-            self.log_message("=" * 80)
+            self.mensajear_log("=" * 80)
+            self.mensajear_log("🚀 INICIANDO PROCESAMIENTO DE EVIDENCIAS")
+            self.mensajear_log("=" * 80)
             
             # Crear carpeta contenedora
-            folder_name = self.folder_name_entry.get().strip()
-            base_output = Path(self.output_folder_path) / folder_name
-            base_output.mkdir(parents=True, exist_ok=True)
-            os.utime(base_output, None) # Asegurar fecha de hoy en la carpeta principal
+            nombre_carpeta = self.entrada_nombre_carpeta.get().strip()
+            salida_base = Path(self.ruta_carpeta_salida) / nombre_carpeta
+            salida_base.mkdir(parents=True, exist_ok=True)
+            os.utime(salida_base, None) # Asegurar fecha de hoy en la carpeta principal
             
-            self.log_message(f"\n📁 Carpeta de salida: {base_output}")
+            self.mensajear_log(f"\n📁 Carpeta de salida: {salida_base}")
             
-            total_clientes = len(self.datos_fuente_df)
-            self.log_message(f"📊 Total de clientes a procesar: {total_clientes}\n")
+            total_clientes = len(self.df_datos_fuente)
+            self.mensajear_log(f"📊 Total de clientes a procesar: {total_clientes}\n")
             
             # Procesar cada cliente
-            success_count = 0
-            for idx, (_, cliente_row) in enumerate(self.datos_fuente_df.iterrows(), 1):
-                self.log_message(f"\n[{idx}/{total_clientes}] {'=' * 60}")
+            conteo_exito = 0
+            for idx, (_, fila_cliente) in enumerate(self.df_datos_fuente.iterrows(), 1):
+                self.mensajear_log(f"\n[{idx}/{total_clientes}] {'=' * 60}")
                 
-                success = self.processor.process_cliente(
-                    cliente_row,
-                    self.nuevos_datos_df,
-                    self.sms_df,
-                    self.consolidados_df,
-                    self.audio_ivr_path,
-                    base_output
+                exito = self.procesador.procesar_cliente(
+                    fila_cliente,
+                    self.df_nuevos_datos,
+                    self.df_sms,
+                    self.df_consolidados,
+                    self.ruta_audio_ivr,
+                    salida_base
                 )
                 
-                if success:
-                    success_count += 1
+                if exito:
+                    conteo_exito += 1
             
             # Resumen final
-            self.log_message("\n" + "=" * 80)
-            self.log_message("✅ PROCESAMIENTO COMPLETADO")
-            self.log_message("=" * 80)
-            self.log_message(f"📊 Clientes procesados exitosamente: {success_count}/{total_clientes}")
-            self.log_message(f"📁 Carpetas creadas en: {base_output}")
-            self.log_message("=" * 80)
+            self.mensajear_log("\n" + "=" * 80)
+            self.mensajear_log("✅ PROCESAMIENTO COMPLETADO")
+            self.mensajear_log("=" * 80)
+            self.mensajear_log(f"📊 Clientes procesados exitosamente: {conteo_exito}/{total_clientes}")
+            self.mensajear_log(f"📁 Carpetas creadas en: {salida_base}")
+            self.mensajear_log("=" * 80)
             
             # Mostrar mensaje de éxito
             self.after(0, lambda: messagebox.showinfo(
                 "Procesamiento completado",
-                f"✅ Se procesaron {success_count} de {total_clientes} clientes exitosamente.\n\n"
-                f"Las evidencias se guardaron en:\n{base_output}"
+                f"✅ Se procesaron {conteo_exito} de {total_clientes} clientes exitosamente.\n\n"
+                f"Las evidencias se guardaron en:\n{salida_base}"
             ))
             
         except Exception as e:
-            error_msg = f"❌ Error durante el procesamiento: {str(e)}"
-            self.log_message(f"\n{error_msg}")
-            self.after(0, lambda: messagebox.showerror("Error", error_msg))
+            mensaje_error = f"❌ Error durante el procesamiento: {str(e)}"
+            self.mensajear_log(f"\n{mensaje_error}")
+            self.after(0, lambda: messagebox.showerror("Error", mensaje_error))
         
         finally:
             # Rehabilitar botón
-            self.after(0, lambda: self.process_btn.configure(
+            self.after(0, lambda: self.boton_procesar.configure(
                 state="normal",
                 text="🚀 PROCESAR EVIDENCIAS"
             ))
 
 
-def main():
+def principal():
     """Función principal"""
-    app = EvidenciasApp()
+    app = AppEvidencias()
     app.mainloop()
 
 
 if __name__ == "__main__":
-    main()
+    principal()
